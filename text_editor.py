@@ -14,6 +14,9 @@ class TextEditor(tk.Frame):
 
         # Class attributes
         self.file = file
+        # Change in a future
+        # Bare bones functionality if the file -> open function
+
 
         # GUI construction
         self.make_menubar()
@@ -73,35 +76,47 @@ class TextSpace(tk.Frame):
         tk.Frame.__init__(self, parent)
         self.pack(fill=BOTH, expand=YES)
 
-        #self.line_numbers = None
-        self.text = ScrolledText(self)
-
-
-class ScrolledText(tk.Text):
-    def __init__(self, parent=None):
-        tk.Text.__init__(self, parent)
-        self.make_scrollbars()
-        self.config_scrollbars()
+        self.make_widgits()
+        self.config_grid()
         self.config_text()
-        self.pack(fill=BOTH, expand=YES)
+
+    def make_widgits(self):
+        self.make_text()
+        self.make_line_numbers()
+        self.make_scrollbars()
+
+    def make_line_numbers(self):
+        self.line_numbers = tk.Label(self)
+        # Returns wrong result
+        self.num_of_lines = int(self.text.index(END+'-1c').split('.')[0])
+        numbers = '\n'.join([str(n) for n in range(1, 50)])
+        # The numbers are not alligned with the lines in the text widget.
+        self.line_numbers.config(text=numbers)
+        #print(self.num_of_lines)
+        self.line_numbers.grid(row=0, column=0, sticky=N+W+E+S)
+
+    def make_text(self):
+        # Should make a class in a future for a text widgit
+        self.text = tk.Text(self)
+        self.text.grid(row=0, column=1, sticky=N+W+E+S)
 
     def make_scrollbars(self):
         self.y_scrollbar = tk.Scrollbar(self, orient=VERTICAL)
-        self.y_scrollbar.config(command=self.yview)
-        self.config(yscrollcommand=self.y_scrollbar.set)
-        self.y_scrollbar.pack(side=RIGHT, fill=Y)
+        self.y_scrollbar.config(command=self.text.yview)
+        self.text.config(yscrollcommand=self.y_scrollbar.set)
+        self.y_scrollbar.grid(row=0, column=2, sticky=N+S)
 
         self.x_scrollbar = tk.Scrollbar(self, orient=HORIZONTAL)
-        self.x_scrollbar.config(command=self.xview)
-        self.config(xscrollcommand=self.x_scrollbar.set)
-        self.x_scrollbar.pack(side=BOTTOM, fill=X)
-
-
-    def config_scrollbars(self):
-        pass
+        self.x_scrollbar.config(command=self.text.xview)
+        self.text.config(xscrollcommand=self.x_scrollbar.set)
+        self.x_scrollbar.grid(row=1, column=0, columnspan= 2, sticky=W+E)
 
     def config_text(self):
-        self.config(wrap=NONE)
+        self.text.config(wrap=NONE)
+
+    def config_grid(self):
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
 
 
 class Statusbar(tk.Frame):
