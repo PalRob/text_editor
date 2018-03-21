@@ -44,15 +44,14 @@ Create a menu and develop methods for this menu:
 
     Help:
         Show help...
-        About
-        ;
+        About;
 """
 
 import os
 import sys
 import tkinter as tk
 from tkinter.constants import * # pylint: disable=unused-wildcard-import
-
+from make_menu import make_menu_button
 # Program's name:
 PROGRAM_NAME = "text_editor"
 
@@ -164,7 +163,60 @@ class TextEditor(tk.Frame):
 
 class Menubar(tk.Frame):
     """Frame containing menus."""
-    pass
+    def __init__(self, parent=None):
+        tk.Frame.__init__(self, parent)
+    # File:
+    #     New file
+    #     Open...
+    #     Save
+    #     Save as...
+
+    #     Quit
+        self.menus = []
+        # File menu
+        self.file_menu_content = ('File', [
+            {"label": "New file"},
+            {"label": "Open..."},
+            {"label": "Save"},
+            {"label": "Save as..."},
+            SEPARATOR,
+            {"label": "Quit"}])
+        self.menus.append(self.file_menu_content)
+        # Edit menu
+        self.edit_menu_content = ("Edit",[
+            {"label": "Undo"},
+            SEPARATOR,
+            {"label": "Cut"},
+            {"label": "Copy"},
+            {"label": "Paste"},
+            {"label": "Delete"},
+            SEPARATOR,
+            {"label": "Find..."},
+            {"label": "Find and replace..."},
+            {"label": "Find ain files..."},
+            {"label": "Go to..."}])
+        self.menus.append(self.edit_menu_content)
+    # Format menu:
+        self.format_menu_content = ("Format", [
+            {"label": "Font..."}])
+        self.menus.append(self.format_menu_content)
+    # View menu:
+        self.view_menu_content = ("View", [
+            {"label": "Statusbar"}])
+        self.menus.append(self.view_menu_content)
+
+    # Help:
+    #     Show help...
+    #     About;
+        self.help_menu_content = ("Help", [
+            {"label": "Show help..."},
+            {"label": "About"}])
+        self.menus.append(self.help_menu_content)
+
+        for menu in self.menus:
+            make_menu_button(self, menu).pack(side=LEFT)
+        self.pack(side=TOP, fill=X)
+
 
 class TextSpace(tk.Frame):
     def __init__(self, parent=None):
