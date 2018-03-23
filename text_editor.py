@@ -1,10 +1,10 @@
 """Simple text editor made with tkinter.
 
 TODO:
-Figure out how to make line_numbers widget that will scoll together
-    with the Text widget. It should update automaticly when the
+Figure out how to make line_numbers widget that will scroll together
+    with the Text widget. It should update automatically when the
     number of "initiated" lines change and if the line number
-    should become highlited when the coursor in in this line,
+    should become highlighted when the cursor in in this line,
     just like in Sublime;
 Create a separate module make_menus that is similar in function
     to the GUIMaker module from the book. It should take a nested
@@ -45,6 +45,11 @@ Create a menu and develop methods for this menu:
     Help:
         Show help...
         About;
+The program should remember some options set by the user
+    previously and store them for future use;
+The program should be able to support opening multiple text
+    files at once and give user an ability to freely switch
+    between them. The ttk.Notebook widget should do the trick;
 """
 
 import os
@@ -56,7 +61,7 @@ from make_menu import make_menu_button
 PROGRAM_NAME = "text_editor"
 
 class TextEditor(tk.Frame):
-    """Frame with a simple text editor. Main class of the programm."""
+    """Frame with a simple text editor. Main class of the program."""
     def __init__(self, parent=None, file=None):
         tk.Frame.__init__(self, parent)
         self.pack(expand=YES, fill=BOTH)
@@ -101,12 +106,12 @@ class TextEditor(tk.Frame):
         self.statusbar = Statusbar(self)
         self.update_cursor_status()
 
-    # Additional metdods
+    # Additional methods
     def set_win_size(self, size=None, ratio=None):
         """Sets size of the main application window.
         Args:
             size(tuple): two-tuple of two integer values: width and
-                heing of the main application window. Defaults to None.
+                height of the main application window. Defaults to None.
             ratio(tuple): two-tuple of two float values in range
                 between 0 and 1: main application window size as a
                 fraction of screen. If no size given default to half
@@ -140,10 +145,10 @@ class TextEditor(tk.Frame):
         self.text.mark_set(INSERT, "1.0")
 
     def bind_keys(self):
-        """Bind keys to actions bedore the program starts.
+        """Bind keys to actions bedfore the program starts.
         """
 
-        # Keybinds for corsor position indicator in statusbar.
+        # Keybinds for cursor position indicator in statusbar.
         # Any pressed key or LMB click will update cursor position
         # white textspace is in focus.
         self.text.bind('<Key>',
@@ -152,7 +157,7 @@ class TextEditor(tk.Frame):
                        lambda event: self.update_cursor_status())
 
     def update_cursor_status(self):
-        """Updates corsor position indicator in statusbar
+        """Updates cursor position indicator in statusbar
         """
         # after_idle method is used to get cursor position after
         # the action it is binded to were performed.
@@ -161,56 +166,90 @@ class TextEditor(tk.Frame):
     def focus_on_text(self):
         self.text.focus()
 
-class Menubar(tk.Frame):
+class FileMenuMethods():
+    """Container class for File menu methods"""
+    def new_file(self):
+        pass
+
+    def open_file(self):
+        pass
+
+    def save(self):
+        pass
+
+    def save_as(self):
+        pass
+
+    def quit_program(self):
+        pass
+
+class EditMenuMethods():
+    """Container class for Edit menu methods"""
+    pass
+
+class FormatMenuMethods():
+    """Container class for Format menu methods"""
+    pass
+
+class ViewMenuMethods():
+    """Container class for View menu methods"""
+    pass
+
+class HelpMenuMethods():
+    """Container class for Help menu methods"""
+    pass
+
+class MenuMethods(FileMenuMethods, EditMenuMethods,
+                  FormatMenuMethods, ViewMenuMethods, HelpMenuMethods):
+    """Mix-in class for menu methods"""
+    pass
+
+class Menubar(tk.Frame, MenuMethods):
     """Frame containing menus."""
+    # TODO:
+    # Menes should "roll" when you click
     def __init__(self, parent=None):
         tk.Frame.__init__(self, parent)
-    # File:
-    #     New file
-    #     Open...
-    #     Save
-    #     Save as...
 
-    #     Quit
         self.menus = []
         # File menu
         self.file_menu_content = ('File', [
-            {"label": "New file"},
-            {"label": "Open..."},
-            {"label": "Save"},
-            {"label": "Save as..."},
+            dict(entry_type="command", label="New file", ),
+            dict(entry_type="command", label= "Open..."),
+            dict(entry_type="command", label="Save"),
+            dict(entry_type="command", label="Save as..."),
             SEPARATOR,
-            {"label": "Quit"}])
+            dict(entry_type="command", label="Quit")])
         self.menus.append(self.file_menu_content)
         # Edit menu
-        self.edit_menu_content = ("Edit",[
-            {"label": "Undo"},
+        self.edit_menu_content = ("Edit", [
+            dict(entry_type="command", label="Undo"),
             SEPARATOR,
-            {"label": "Cut"},
-            {"label": "Copy"},
-            {"label": "Paste"},
-            {"label": "Delete"},
+            dict(entry_type="command", label="Cut"),
+            dict(entry_type="command", label="Copy"),
+            dict(entry_type="command", label="Paste"),
+            dict(entry_type="command", label="Delete"),
             SEPARATOR,
-            {"label": "Find..."},
-            {"label": "Find and replace..."},
-            {"label": "Find ain files..."},
-            {"label": "Go to..."}])
+            dict(entry_type="command", label="Find..."),
+            dict(entry_type="command", label="Find and replace..."),
+            dict(entry_type="command", label="Find in files..."),
+            dict(entry_type="command", label="Go to...")])
         self.menus.append(self.edit_menu_content)
     # Format menu:
         self.format_menu_content = ("Format", [
-            {"label": "Font..."}])
+            dict(entry_type="command", label="Font...")])
         self.menus.append(self.format_menu_content)
     # View menu:
+        # TODO
+        # Statusbar should be a checkbutton
         self.view_menu_content = ("View", [
-            {"label": "Statusbar"}])
+            dict(entry_type="command", label="Statusbar")])
         self.menus.append(self.view_menu_content)
 
-    # Help:
-    #     Show help...
-    #     About;
+    # Help menu
         self.help_menu_content = ("Help", [
-            {"label": "Show help..."},
-            {"label": "About"}])
+            dict(entry_type="command", label="Show help..."),
+            dict(entry_type="command", label="About")])
         self.menus.append(self.help_menu_content)
 
         for menu in self.menus:
@@ -247,7 +286,7 @@ class TextSpace(tk.Frame):
         self.line_numbers.grid(row=0, column=0, sticky=N+S)
 
     def make_text(self):
-        # Should make a class in a future for a text widgit
+        # Should make a class in a future for a text widget
         self.text = tk.Text(self)
         self.text.grid(row=0, column=1, sticky=N+W+E+S)
 
@@ -297,7 +336,7 @@ class LineNumbers(tk.Canvas):
                 y = dline[1]
                 linenum = i.split('.')[0]
                 # Rjust doesn't work for some reason
-                #linenum = linenum.rjust(num_of_digits)
+                # linenum = linenum.rjust(num_of_digits)
                 self.create_text(1, y, anchor=N+W, text=linenum)
                 i = self.text.index('{0}+1line'.format(i))
             else:
@@ -342,7 +381,7 @@ class Statusbar(tk.Frame):
         return self.parent.text.index(INSERT).split('.')
 
     def update_cursor_position(self):
-        """Update Statusbar's cursor position display.
+        """Update cursor position display.
         """
         cursor_pos = self.get_cursor_pos()
         cursor_pos_text = "line {} col {}".format(*cursor_pos)
