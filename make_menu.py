@@ -1,15 +1,39 @@
-"""Automation of the menu construction.
+# -*- coding: utf-8 -*-
+"""This module automates construction of tk.Menu and tk.Menubutton
+    widgets.
 
-TODO:
-    Add docstrings to functions;"""
+"""
 
 import tkinter as tk
-from tkinter.constants import *
+from tkinter.constants import * # pylint: disable=unused-wildcard-import
 
 
+def make_menu(parent, menu_content, **options):
+    """Creates an instance of tkinter Menu class with given content.
+    Args:
+        parent (Class): parent class that menu widget attached to;
+        menu_content (list): list of dictionaries. Every dict is a
+            separate command that would be added to the menu. Type of
+            command determined by the "entry_type". Structure of the
+            list:
+                [dict(entry_type="command/cascade/checkbutton/
+                    radiobutton", other keywords arguments for the
+                    specific menu being created (for cascade keyword
+                    argument menu=menu_content for the submenu)),
+                    or SEPARATOR]
+        **options: keyword arguments for the tk.Menu widget. Listed in
+            documentation for tkinter.
+    Returns:
+        menu (tk.Menu): An instance of a Menu class filled with
+            menu_content.
 
-def make_menu(parent, menu_content, tearoff=NO):
-    menu = tk.Menu(parent, tearoff=tearoff)
+    """
+    # Originally "tearoff" defaults to True.
+    # Lines below set it to False by default.
+    if "tearoff" not in options:
+        options["tearoff"] = NO
+
+    menu = tk.Menu(parent, **options)
 
     commands = {"command": menu.add_command,
                 "separator": menu.add_separator,
@@ -17,6 +41,7 @@ def make_menu(parent, menu_content, tearoff=NO):
                 "checkbutton": menu.add_checkbutton,
                 "radiobutton": menu.add_radiobutton}
 
+    # Special cases for "separator" and "cascade".
     for menu_entry in menu_content:
         if menu_entry == SEPARATOR:
             commands[SEPARATOR]()
@@ -33,12 +58,24 @@ def make_menu(parent, menu_content, tearoff=NO):
 
     return menu
 
-def make_menu_button(parent, menu_button_content, tearoff=NO):
+def make_menu_button(parent, menu_button_content, **options):
+    """Creates an instance of tkinter Menubutton class with given content.
+    Args:
+        parent (Class): parent class that menubutton widget attached to;
+        menu_button_content (2-tuple): ("menu_button_label",
+            [menu_content]). Description of a menu_content given in
+            a docstring of the make_menu function.
+        **options: keyword arguments for the tk.Menu widget. Listed in
+            documentation for tkinter.
+    Returns:
+        menubutton(tk.Menubutton): An instance of a Menu class filled
+            with menu_button_content.
+    """
     menu_button_label = menu_button_content[0]
     menu_content = menu_button_content[1]
 
-    menubutton = tk.Menubutton(parent, text=menu_button_label)
-    menu = make_menu(menubutton, menu_content, tearoff=tearoff)
+    menubutton = tk.Menubutton(parent, text=menu_button_label, **options)
+    menu = make_menu(menubutton, menu_content, **options)
     menubutton.config(menu=menu)
 
     return menubutton
