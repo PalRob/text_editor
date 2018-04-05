@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Simple text editor made with tkinter.
 
 TODO:
@@ -13,38 +14,6 @@ Create a separate module make_menus that is similar in function
     shortcuts as optional arguments;
 Create bar for buttons that duplicates some operations from the
     menubar. Should be able to hide it;
-Create a menu and develop methods for this menu:
-    File:
-        New file
-        Open...
-        Save
-        Save as...
-
-        Quit
-
-    Edit:
-        Undo
-
-        Cut
-        Copy
-        Paste
-        Delete
-
-        Find...
-        Find and replace...
-        Find in files...
-        Go to...
-
-    Format:
-        Font...
-
-    View:
-        Statusbar (check yes / no)
-
-
-    Help:
-        Show help...
-        About;
 The program should remember some options set by the user
     previously and store them for future use;
 The program should be able to support opening multiple text
@@ -56,7 +25,10 @@ import os
 import sys
 import tkinter as tk
 from tkinter.constants import * # pylint: disable=unused-wildcard-import
+import tkinter.messagebox
+import tkinter.filedialog
 from make_menu import make_menu_button
+
 # Program's name:
 PROGRAM_NAME = "text_editor"
 
@@ -81,13 +53,20 @@ class TextEditor(tk.Frame):
         self.make_statusbar()
 
         # Other GUI related functions
+        self.menubar._get_text()
         self.set_win_size()
         self.bind_keys()
-        self.focus_on_text()
-        # Change in a future
+        self._focus_on_text()
+        # TODO:
+        # Change in future
         # Bare bones functionality if the file -> open function
-        self.open()
-
+        if self.file:
+            MenuMethods()._open_file(self.text, self, self.file)
+        # Used so undo method won't delete inserted text
+        # should add this line in the actual
+        # EditMenuMethods.open method
+        self.text.edit_reset()
+        self._update_window_title()
 
     # GUI construction methods
     def make_menubar(self):
@@ -104,7 +83,7 @@ class TextEditor(tk.Frame):
         """Creates Statusbar widget on the bottom of the parent's
         window."""
         self.statusbar = Statusbar(self)
-        self.update_cursor_status()
+        self._update_cursor_status()
 
     # Additional methods
     def set_win_size(self, size=None, ratio=None):
@@ -136,14 +115,6 @@ class TextEditor(tk.Frame):
 
         self.master.geometry('{}x{}'.format(width, height))
 
-
-    def open(self):
-        if self.file:
-            with open(self.file, 'r') as file:
-                for line in file:
-                    self.text.insert(END, line)
-        self.text.mark_set(INSERT, "1.0")
-
     def bind_keys(self):
         """Bind keys to actions bedfore the program starts.
         """
@@ -152,109 +123,273 @@ class TextEditor(tk.Frame):
         # Any pressed key or LMB click will update cursor position
         # white textspace is in focus.
         self.text.bind('<Key>',
-                       lambda event: self.update_cursor_status())
+                       lambda event: self._update_cursor_status())
         self.text.bind('<Button-1>',
-                       lambda event: self.update_cursor_status())
+                       lambda event: self._update_cursor_status())
+        # self.textspace.bind_all('<MouseWheel>',
+        #     lambda event:self.update_line_numbers())
 
-    def update_cursor_status(self):
+    def _update_cursor_status(self):
         """Updates cursor position indicator in statusbar
         """
         # after_idle method is used to get cursor position after
         # the action it is binded to were performed.
-        self.after_idle(self.statusbar.update_cursor_position)
+        self.after_idle(self.statusbar._update_cursor_position)
 
-    def focus_on_text(self):
+    # def update_line_numbers(self):
+    #     self.textspace.line_numbers.write_numbers()
+
+    def _focus_on_text(self):
         self.text.focus()
+
+    def _update_window_title(self):
+        if self.file is None:
+            filename = "untitled"
+        else:
+            filename = self.file
+        program = PROGRAM_NAME
+
+        title = "{0} - {1}".format(filename, program)
+        self.master.title(title)
 
 class FileMenuMethods():
     """Container class for File menu methods"""
-    def new_file(self):
-        pass
+    def new_file(self, text, parent):
+        if self._save_modified(text, parent) is None:
+            return
+        text.delete("1.0", END)
+        parent.file = None
 
-    def open_file(self):
-        pass
+        parent._update_window_title()
 
-    def save(self):
-        pass
+    def _open_file(self, text, parent, file=None, **options):
+        # TODO:
+        # Make something that will remember user's last opened directory
+        # so on the next open or save initial the saved path will be
+        # used as initialdir
+        file = file or tkinter.filedialog.Open(**options).show()
+        if not file:
+            return
 
-    def save_as(self):
-        pass
+        text.delete("1.0", END)
+        with open(file, 'r') as work_file:
+            for line in work_file:
+                text.insert(END, line)
+        text.mark_set(INSERT, "1.0")
+        text.edit_reset()
+        text.edit_modified("False")
+        self._set_current_file(file, parent)
 
-    def quit_program(self):
-        pass
+    def open(self, text, parent, file=None, **options):
+        if self._is_modified(text):
+            self._message_ask_save()
+        self._open_file(text, parent, file, **options)
+
+    def _save_file(self, text, file):
+        with open(file, 'w') as file:
+            # TODO:
+            # Taking all of the text at once will cause problems
+            # when dealing with big files;
+
+            # END+"-1line" used to avoid automatically adding a
+            # newline at the end of the file when saving
+            for line in text.get("1.0", END+"-1line"):
+                file.write(line)
+
+    def save(self, text, parent):
+        # not finished
+        file = parent.master.file
+        if not file:
+            self.save_as(text, parent)
+        else:
+            if not self._is_modified(text):
+                pass
+            else:
+                self._save_file(text, file)
+
+    def save_as(self, text, parent):
+        # defaultextention="*.*" means that returned path will
+        # have an extension chosen from the filetypes list
+        # automatically added to it
+
+        # TODO:
+        # Improve saving process. Learn about conventional way to
+        # implement save_as interface and make it like that.
+        # When filetype is "All files" writing a filename like,
+        # for example "cat.py", will be met with a messagebox
+        # "Unacceptable filename", but choosing an existing file
+        # will work without problems
+        file = tkinter.filedialog.asksaveasfilename(filetypes=[
+            ("All files", '*.*'), ("Text file", '.txt'), ("Python", ".py")],
+             defaultextension="*.*")
+        if file:
+            self._save_file(text, file)
+            self._set_current_file(file, parent)
+
+    def exit(self, parent):
+        if self._is_modified(parent.text):
+            self._message_ask_save(parent.file)
+        parent.master.destroy()
+
+    def _message_ask_save(self, file=None):
+        if file:
+            filename = os.path.basename(filename)
+        else:
+            filename = "The file"
+        title = "Save changes?"
+        message = "{} has been modified, save changes?".format(filename)
+
+        return tkinter.messagebox.askyesnocancel(title=title, message=message)
+
+    def _is_modified(self, text):
+        if text is None:
+            modified = False
+        else:
+            modified = text.edit_modified()
+        return modified
+
+    def _save_modified(self, text, parent):
+        if self._is_modified(text):
+            save_before_action = self._message_ask_save()
+            if save_before_action:
+                self.save(text, parent)
+        else:
+            save_before_action = False
+
+        return save_before_action
+
+    def _set_current_file(self, file, parent):
+        parent.master.file = file
+
 
 class EditMenuMethods():
     """Container class for Edit menu methods"""
-    pass
+    def undo(self, text):
+        text.edit_undo()
+
+    def redo(self, text):
+        text.edit_redo()
+
+    def cut(self):
+        pass
+
+    def copy(self):
+        pass
+
+    def paste(self):
+        pass
+
+    def delete(self):
+        pass
+
+    def find(self):
+        pass
+
+    def find_and_replace(self):
+        pass
+
+    def find_in_files(self):
+        pass
+
+    def go_to(self):
+        pass
+
 
 class FormatMenuMethods():
     """Container class for Format menu methods"""
     pass
 
+
 class ViewMenuMethods():
     """Container class for View menu methods"""
     pass
 
+
 class HelpMenuMethods():
     """Container class for Help menu methods"""
-    pass
+    def show_help():
+        pass
+    def about():
+        tkinter.messagebox.showinfo(title=PROGRAM_NAME, message=__doc__)
 
 class MenuMethods(FileMenuMethods, EditMenuMethods,
                   FormatMenuMethods, ViewMenuMethods, HelpMenuMethods):
     """Mix-in class for menu methods"""
     pass
 
-class Menubar(tk.Frame, MenuMethods):
+class Menubar(tk.Frame):
     """Frame containing menus."""
     # TODO:
     # Menes should "roll" when you click
     def __init__(self, parent=None):
         tk.Frame.__init__(self, parent)
-
+        # The text attribute from the parent.text assignment is None
+        # because menubar created and packed before textspace
+        # So self.text will be assigned later by calling _get_text
+        # method from the parent class
+        self.text = None
+        self.parent = parent
         self.menus = []
         # File menu
         self.file_menu_content = ('File', [
-            dict(entry_type="command", label="New file", ),
-            dict(entry_type="command", label= "Open..."),
-            dict(entry_type="command", label="Save"),
-            dict(entry_type="command", label="Save as..."),
+            dict(label="New file", entry_type="command",
+                 accelerator="Ctrl+N",
+                 command=lambda: MenuMethods().new_file(self.text, self.parent)),
+            dict(label= "Open...", entry_type="command",
+                 accelerator="Ctrl+O",
+                 command=lambda: MenuMethods().open(self.text, self.parent)),
+            dict(label="Save", entry_type="command", accelerator="Ctrl+S"),
+            dict(label="Save as...", entry_type="command",
+                 accelerator="Ctrl+Shift+S",
+                 command=lambda:MenuMethods().save_as(self.text, self.parent)),
             SEPARATOR,
-            dict(entry_type="command", label="Quit")])
+            dict(label="Exit", entry_type="command",
+                 command=lambda:MenuMethods().exit(self.parent))])
         self.menus.append(self.file_menu_content)
         # Edit menu
         self.edit_menu_content = ("Edit", [
-            dict(entry_type="command", label="Undo"),
+            dict(label="Undo", entry_type="command", accelerator="Ctrl+Z",
+                 command=lambda: MenuMethods().undo(self.text)),
+            dict(label="Redo", entry_type="command", accelerator="Ctrl+Y",
+                 command=lambda: MenuMethods().redo(self.text)),
             SEPARATOR,
-            dict(entry_type="command", label="Cut"),
-            dict(entry_type="command", label="Copy"),
-            dict(entry_type="command", label="Paste"),
-            dict(entry_type="command", label="Delete"),
+            dict(label="Cut", entry_type="command", accelerator="Ctrl+X"),
+            dict(label="Copy", entry_type="command", accelerator="Ctrl+C"),
+            dict(label="Paste", entry_type="command", accelerator="Ctrl+V"),
+            dict(label="Delete", entry_type="command", accelerator="Del"),
             SEPARATOR,
-            dict(entry_type="command", label="Find..."),
-            dict(entry_type="command", label="Find and replace..."),
-            dict(entry_type="command", label="Find in files..."),
-            dict(entry_type="command", label="Go to...")])
+            dict(label="Find...", entry_type="command", accelerator="Ctrl+F"),
+            dict(label="Find and replace...", entry_type="command",
+                 accelerator="Ctrl+Shift+F"),
+            dict(label="Find in files...", entry_type="command"),
+            dict(label="Go to...", entry_type="command")])
         self.menus.append(self.edit_menu_content)
     # Format menu:
         self.format_menu_content = ("Format", [
-            dict(entry_type="command", label="Font...")])
+            dict(label="Wrap words", entry_type="checkbutton"),
+            dict(label="Font...", entry_type="command"),])
         self.menus.append(self.format_menu_content)
     # View menu:
         # TODO
         # Statusbar should be a checkbutton
         self.view_menu_content = ("View", [
-            dict(entry_type="command", label="Statusbar")])
+            dict(label="Statusbar", entry_type="command")])
         self.menus.append(self.view_menu_content)
 
     # Help menu
         self.help_menu_content = ("Help", [
-            dict(entry_type="command", label="Show help..."),
-            dict(entry_type="command", label="About")])
+            dict(label="Show help...", entry_type="command",
+                 command=MenuMethods().show_help),
+            dict(label="About", entry_type="command",
+                 command=MenuMethods().about)])
         self.menus.append(self.help_menu_content)
 
         for menu in self.menus:
             make_menu_button(self, menu).pack(side=LEFT)
         self.pack(side=TOP, fill=X)
+
+    def _get_text(self):
+        self.text = self.parent.text
 
 
 class TextSpace(tk.Frame):
@@ -267,7 +402,7 @@ class TextSpace(tk.Frame):
         # Attributes for GUI widgets.
         # Assigned values during GUI construction
         self.text = None
-        self.line_numbers = None
+        # self.line_numbers = None
         self.x_scrollbar = None
         self.y_scrollbar = None
 
@@ -278,7 +413,7 @@ class TextSpace(tk.Frame):
     def make_widgits(self):
         self.make_text()
         # Currently line numbers disabled
-        #self.make_line_numbers()
+        # self.make_line_numbers()
         self.make_scrollbars()
 
     def make_line_numbers(self):
@@ -287,7 +422,7 @@ class TextSpace(tk.Frame):
 
     def make_text(self):
         # Should make a class in a future for a text widget
-        self.text = tk.Text(self)
+        self.text = tk.Text(self, undo=YES)
         self.text.grid(row=0, column=1, sticky=N+W+E+S)
 
     def make_scrollbars(self):
@@ -317,36 +452,47 @@ class LineNumbers(tk.Canvas):
 
         self.num_of_lines = self.get_num_of_lines()
 
-        self.set_width(40)
+        self.set_width(30)
         self.write_numbers()
 
     def set_width(self, width):
         self.config(width=width)
 
     def write_numbers(self):
+        # num_of_lines = self.get_num_of_lines()
+        # if num_of_lines > self.num_of_lines:
         self.num_of_lines = self.get_num_of_lines()
-        num_of_digits = len(str(self.num_of_lines))
-        i = self.text.index('@0,0')
         self.text.update()
-        # Lines indexed from 1, not from 0, that is why the range
-        # function called with (1, n+1)
-        while True:
+        self.delete(ALL)
+
+        for n in range(1, self.num_of_lines+1):
+            i = "{0}.0".format(n)
             dline = self.text.dlineinfo(i)
             if dline:
-                y = dline[1]
-                linenum = i.split('.')[0]
-                # Rjust doesn't work for some reason
-                # linenum = linenum.rjust(num_of_digits)
-                self.create_text(1, y, anchor=N+W, text=linenum)
-                i = self.text.index('{0}+1line'.format(i))
-            else:
-                break
+                y_pos = dline[1]
+                self.create_text(1, y_pos, anchor=N+W, text=n)
+
+        # num_of_digits = len(str(self.num_of_lines))
+        # i = self.text.index('@0,0')
+        # self.text.update()
+        # self.delete(ALL)
+        # # Lines indexed from 1, not from 0, that is why the range
+        # # function called with (1, n+1)
+        # while True:
+        #     dline = self.text.dlineinfo(i)
+        #     if dline:
+        #         y = dline[1]
+        #         linenum = i.split('.')[0]
+        #         # Rjust doesn't work for some reason
+        #         # linenum = linenum.rjust(num_of_digits)
+        #         self.create_text(1, y, anchor=N+W, text=linenum)
+        #         i = self.text.index('{0}+1line'.format(i))
+        #     else:
+        #         break
 
     def get_num_of_lines(self):
-        num_of_lines = int(self.text.index(END+'-1c').split('.')[0])
+        num_of_lines = int(self.text.index(END+'-1l').split('.')[0])
         return num_of_lines
-
-
 
 
 class Statusbar(tk.Frame):
@@ -380,7 +526,7 @@ class Statusbar(tk.Frame):
         """
         return self.parent.text.index(INSERT).split('.')
 
-    def update_cursor_position(self):
+    def _update_cursor_position(self):
         """Update cursor position display.
         """
         cursor_pos = self.get_cursor_pos()

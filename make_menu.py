@@ -48,7 +48,7 @@ def make_menu(parent, menu_content, **options):
             continue
 
         entry = menu_entry
-        entry_type = entry["entry_type"]
+        entry_type = entry["entry_type"].lower()
         del entry["entry_type"]
 
         if entry_type == "cascade":
