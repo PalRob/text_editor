@@ -61,7 +61,7 @@ class TextEditor(tk.Frame):
         # Change in future
         # Bare bones functionality if the file -> open function
         if self.file:
-            MenuMethods()._open_file(self.text, self, self.file)
+            MenuMethods().open(self.text, self, self.file)
         # Used so undo method won't delete inserted text
         # should add this line in the actual
         # EditMenuMethods.open method
@@ -140,9 +140,13 @@ class TextEditor(tk.Frame):
     #     self.textspace.line_numbers.write_numbers()
 
     def _focus_on_text(self):
+        """Sets focus on the text widget."""
         self.text.focus()
 
     def _update_window_title(self):
+        """Updates main window title in the '{filepath} {program_name}'
+        format. Filepath substituted for 'untitled' if no file were
+        given."""
         if self.file is None:
             filename = "untitled"
         else:
@@ -155,50 +159,35 @@ class TextEditor(tk.Frame):
 class FileMenuMethods():
     """Container class for File menu methods"""
     def new_file(self, text, parent):
+        """Creates new file. If contents of the text widget were
+        modified, calls AskSave message dialog, execution of the
+        function stops in the option "Cancel" were chosen.
+        Args:
+            text (tk.Text): instance of a tk.Text widget that used
+                as the textspace of the editor;
+            parent: supposedly the second topmost parent class of the
+                program, one below the tk.Tk;
+        Returns:
+            None
+        """
         if self._save_modified(text, parent) is None:
             return
         text.delete("1.0", END)
-        parent.file = None
+
+        file = None
+        self._set_current_file(file, parent)
 
         parent._update_window_title()
 
-    def _open_file(self, text, parent, file=None, **options):
-        # TODO:
-        # Make something that will remember user's last opened directory
-        # so on the next open or save initial the saved path will be
-        # used as initialdir
-        file = file or tkinter.filedialog.Open(**options).show()
-        if not file:
-            return
-
-        text.delete("1.0", END)
-        with open(file, 'r') as work_file:
-            for line in work_file:
-                text.insert(END, line)
-        text.mark_set(INSERT, "1.0")
-        text.edit_reset()
-        text.edit_modified("False")
-        self._set_current_file(file, parent)
-
     def open(self, text, parent, file=None, **options):
-        if self._is_modified(text):
-            self._message_ask_save()
+        if self._save_modified(text, parent) is None:
+            return
         self._open_file(text, parent, file, **options)
 
-    def _save_file(self, text, file):
-        with open(file, 'w') as file:
-            # TODO:
-            # Taking all of the text at once will cause problems
-            # when dealing with big files;
-
-            # END+"-1line" used to avoid automatically adding a
-            # newline at the end of the file when saving
-            for line in text.get("1.0", END+"-1line"):
-                file.write(line)
 
     def save(self, text, parent):
         # not finished
-        file = parent.master.file
+        file = parent.file
         if not file:
             self.save_as(text, parent)
         else:
@@ -226,10 +215,43 @@ class FileMenuMethods():
             self._save_file(text, file)
             self._set_current_file(file, parent)
 
-    def exit(self, parent):
-        if self._is_modified(parent.text):
-            self._message_ask_save(parent.file)
+    def exit(self, text, parent):
+        if self._save_modified(text, parent) is None:
+            return
         parent.master.destroy()
+
+    # Service methods
+
+    def _open_file(self, text, parent, file=None, **options):
+        # TODO:
+        # Make something that will remember user's last opened directory
+        # so on the next open or save initial the saved path will be
+        # used as initialdir
+        file = file or tkinter.filedialog.Open(**options).show()
+        if not file:
+            return
+
+        text.delete("1.0", END)
+        with open(file, 'r') as work_file:
+            for line in work_file:
+                text.insert(END, line)
+        text.mark_set(INSERT, "1.0")
+        text.edit_reset()
+        text.edit_modified("False")
+        self._set_current_file(file, parent)
+
+
+    def _save_file(self, text, file):
+        with open(file, 'w') as file:
+            # TODO:
+            # Taking all of the text at once will cause problems
+            # when dealing with big files;
+
+            # END+"-1line" used to avoid automatically adding a
+            # newline at the end of the file when saving
+            for line in text.get("1.0", END+"-1line"):
+                file.write(line)
+        text.edit_modified(False)
 
     def _message_ask_save(self, file=None):
         if file:
@@ -242,13 +264,39 @@ class FileMenuMethods():
         return tkinter.messagebox.askyesnocancel(title=title, message=message)
 
     def _is_modified(self, text):
-        if text is None:
-            modified = False
-        else:
-            modified = text.edit_modified()
+        """Checks if text were modified.
+        Args:
+            text (tk.Text or None): Instance of the tkinter class Text;
+                None is passed during the construction of the interface
+                if the program were given a file to open on launch.
+        Returns:
+            (bool): """
+        # if text is None:
+        #     modified = False
+        # else:
+        modified = text.edit_modified()
         return modified
 
     def _save_modified(self, text, parent):
+        """If contents of "text" were modified asks user whether
+        or not changes should be saved. Saves changes if user answers
+        positively.
+        Args:
+            text (tk.Text): Instance of the tkinter class Text;
+            parent (class): Parent of the class from where this method
+                were called;
+        Returns:
+            (bool or None): If text is not modified this function
+                returns False, otherwise returns an answer that user
+                gives to the "ask save" message.
+
+                If the answer is "Yes" the contents of text will be
+                saved. This function will return True.
+                If the answer is "No" this function returns False.
+                If the answer is "Cancel" returns None and it is
+                assumed that further execution of function from where
+                it was called will stop.
+            """
         if self._is_modified(text):
             save_before_action = self._message_ask_save()
             if save_before_action:
@@ -259,28 +307,53 @@ class FileMenuMethods():
         return save_before_action
 
     def _set_current_file(self, file, parent):
-        parent.master.file = file
+        """Sets attribute file of the parent's master to the value file.
+        Args:
+            file (str or None): Path to the file being loaded into the
+                text editor;
+            parent: (class): Parent of the class from where this method
+                were called;
+        Returns:
+            None
+        """
+        parent.file = file
 
 
 class EditMenuMethods():
     """Container class for Edit menu methods"""
+    # TODO:
+    # Some Edit methods should be grayed out if no text is selected
+    # or undo/redo stuck is empty
     def undo(self, text):
         text.edit_undo()
 
     def redo(self, text):
         text.edit_redo()
 
-    def cut(self):
-        pass
+    def cut(self, text):
+        self.copy(text)
+        self.delete(text)
 
-    def copy(self):
-        pass
+    def copy(self, text):
+        # TODO:
+        # When selected text is copied into the clipboard and then
+        # the program window is closed the clipboard becomes empty.
+        if self._text_selected(text):
+            text.clipboard_clear()
+            text.clipboard_append(text.selection_get())
 
-    def paste(self):
-        pass
+    def paste(self, text):
+        try:
+            clipboard_content = text.clipboard_get()
+        except TclError:
+            return
 
-    def delete(self):
-        pass
+        self.delete(text)
+        text.insert(INSERT, clipboard_content)
+
+    def delete(self, text):
+        if self._text_selected(text):
+            text.delete(SEL_FIRST, SEL_LAST)
 
     def find(self):
         pass
@@ -293,6 +366,9 @@ class EditMenuMethods():
 
     def go_to(self):
         pass
+
+    def _text_selected(self, text):
+        return text.tag_ranges(SEL)
 
 
 class FormatMenuMethods():
@@ -317,18 +393,9 @@ class MenuMethods(FileMenuMethods, EditMenuMethods,
     """Mix-in class for menu methods"""
     pass
 
-class Menubar(tk.Frame):
-    """Frame containing menus."""
-    # TODO:
-    # Menes should "roll" when you click
-    def __init__(self, parent=None):
-        tk.Frame.__init__(self, parent)
-        # The text attribute from the parent.text assignment is None
-        # because menubar created and packed before textspace
-        # So self.text will be assigned later by calling _get_text
-        # method from the parent class
-        self.text = None
-        self.parent = parent
+
+class MenuContents():
+    def __init__(self):
         self.menus = []
         # File menu
         self.file_menu_content = ('File', [
@@ -338,13 +405,14 @@ class Menubar(tk.Frame):
             dict(label= "Open...", entry_type="command",
                  accelerator="Ctrl+O",
                  command=lambda: MenuMethods().open(self.text, self.parent)),
-            dict(label="Save", entry_type="command", accelerator="Ctrl+S"),
+            dict(label="Save", entry_type="command", accelerator="Ctrl+S",
+                 command=lambda: MenuMethods().save(self.text, self.parent)),
             dict(label="Save as...", entry_type="command",
                  accelerator="Ctrl+Shift+S",
                  command=lambda:MenuMethods().save_as(self.text, self.parent)),
             SEPARATOR,
             dict(label="Exit", entry_type="command",
-                 command=lambda:MenuMethods().exit(self.parent))])
+                 command=lambda:MenuMethods().exit(self.text, self.parent))])
         self.menus.append(self.file_menu_content)
         # Edit menu
         self.edit_menu_content = ("Edit", [
@@ -353,10 +421,14 @@ class Menubar(tk.Frame):
             dict(label="Redo", entry_type="command", accelerator="Ctrl+Y",
                  command=lambda: MenuMethods().redo(self.text)),
             SEPARATOR,
-            dict(label="Cut", entry_type="command", accelerator="Ctrl+X"),
-            dict(label="Copy", entry_type="command", accelerator="Ctrl+C"),
-            dict(label="Paste", entry_type="command", accelerator="Ctrl+V"),
-            dict(label="Delete", entry_type="command", accelerator="Del"),
+            dict(label="Cut", entry_type="command", accelerator="Ctrl+X",
+                 command=lambda: MenuMethods().cut(self.text)),
+            dict(label="Copy", entry_type="command", accelerator="Ctrl+C",
+                 command=lambda: MenuMethods().copy(self.text)),
+            dict(label="Paste", entry_type="command", accelerator="Ctrl+V",
+                 command=lambda: MenuMethods().paste(self.text)),
+            dict(label="Delete", entry_type="command", accelerator="Del",
+                 command=lambda: MenuMethods().delete(self.text)),
             SEPARATOR,
             dict(label="Find...", entry_type="command", accelerator="Ctrl+F"),
             dict(label="Find and replace...", entry_type="command",
@@ -384,12 +456,38 @@ class Menubar(tk.Frame):
                  command=MenuMethods().about)])
         self.menus.append(self.help_menu_content)
 
+        # Lists of commands that should be disabled in
+        # specific circumstances
+        # TODO:
+        # Use build in "postcommand" attribute of the Menu class
+        # to configure disabled menu entries when the menu is clicked
+        self.disable_on_empty_stack = ["Undo"]
+        self.disable_on_empty_selection = ["Cut", "Copy", "Delete"]
+        self.disable_on_empty_clipboard = ["Paste"]
+
+
+class Menubar(tk.Frame, MenuContents):
+    """Frame containing menus."""
+    # TODO:
+    # Menes should "roll" when you click
+    def __init__(self, parent=None):
+        tk.Frame.__init__(self, parent)
+        MenuContents.__init__(self)
+        # The text attribute from the parent.text assignment is None
+        # because menubar created and packed before textspace
+        # So self.text will be assigned later by calling _get_text
+        # method from the parent class
+        self.text = None
+        self.parent = parent
+
+        # self.menus inherited from the class MenuContents
         for menu in self.menus:
             make_menu_button(self, menu).pack(side=LEFT)
         self.pack(side=TOP, fill=X)
 
     def _get_text(self):
         self.text = self.parent.text
+
 
 
 class TextSpace(tk.Frame):
