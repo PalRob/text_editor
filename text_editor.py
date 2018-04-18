@@ -61,7 +61,7 @@ class TextEditor(tk.Frame):
         # Change in future
         # Bare bones functionality if the file -> open function
         if self.file:
-            MenuMethods().open(self.text, self, self.file)
+            MenuMethods.open(self.text, self, self.file)
         # Used so undo method won't delete inserted text
         # should add this line in the actual
         # EditMenuMethods.open method
@@ -156,9 +156,9 @@ class TextEditor(tk.Frame):
         title = "{0} - {1}".format(filename, program)
         self.master.title(title)
 
-class FileMenuMethods():
+class FileMenuMethods:
     """Container class for File menu methods"""
-    def new_file(self, text, parent):
+    def new_file(text, parent):
         """Creates new file. If contents of the text widget were
         modified, calls AskSave message dialog, execution of the
         function stops in the option "Cancel" were chosen.
@@ -170,33 +170,33 @@ class FileMenuMethods():
         Returns:
             None
         """
-        if self._save_modified(text, parent) is None:
+        if FileMenuMethods._save_modified(text, parent) is None:
             return
         text.delete("1.0", END)
 
         file = None
-        self._set_current_file(file, parent)
+        FileMenuMethods._set_current_file(file, parent)
 
         parent._update_window_title()
 
-    def open(self, text, parent, file=None, **options):
-        if self._save_modified(text, parent) is None:
+    def open(text, parent, file=None, **options):
+        if FileMenuMethods._save_modified(text, parent) is None:
             return
-        self._open_file(text, parent, file, **options)
+        FileMenuMethods._open_file(text, parent, file, **options)
 
 
-    def save(self, text, parent):
+    def save(text, parent):
         # not finished
         file = parent.file
         if not file:
-            self.save_as(text, parent)
+            FileMenuMethods.save_as(text, parent)
         else:
-            if not self._is_modified(text):
+            if not FileMenuMethods._is_modified(text):
                 pass
             else:
-                self._save_file(text, file)
+                FileMenuMethods._save_file(text, file)
 
-    def save_as(self, text, parent):
+    def save_as(text, parent):
         # defaultextention="*.*" means that returned path will
         # have an extension chosen from the filetypes list
         # automatically added to it
@@ -212,17 +212,17 @@ class FileMenuMethods():
             ("All files", '*.*'), ("Text file", '.txt'), ("Python", ".py")],
              defaultextension="*.*")
         if file:
-            self._save_file(text, file)
-            self._set_current_file(file, parent)
+            FileMenuMethods._save_file(text, file)
+            FileMenuMethods._set_current_file(file, parent)
 
-    def exit(self, text, parent):
-        if self._save_modified(text, parent) is None:
+    def exit(text, parent):
+        if FileMenuMethods._save_modified(text, parent) is None:
             return
         parent.master.destroy()
 
     # Service methods
 
-    def _open_file(self, text, parent, file=None, **options):
+    def _open_file(text, parent, file=None, **options):
         # TODO:
         # Make something that will remember user's last opened directory
         # so on the next open or save initial the saved path will be
@@ -238,10 +238,10 @@ class FileMenuMethods():
         text.mark_set(INSERT, "1.0")
         text.edit_reset()
         text.edit_modified("False")
-        self._set_current_file(file, parent)
+        FileMenuMethods._set_current_file(file, parent)
 
 
-    def _save_file(self, text, file):
+    def _save_file(text, file):
         with open(file, 'w') as file:
             # TODO:
             # Taking all of the text at once will cause problems
@@ -253,7 +253,7 @@ class FileMenuMethods():
                 file.write(line)
         text.edit_modified(False)
 
-    def _message_ask_save(self, file=None):
+    def _message_ask_save(file=None):
         if file:
             filename = os.path.basename(filename)
         else:
@@ -263,7 +263,7 @@ class FileMenuMethods():
 
         return tkinter.messagebox.askyesnocancel(title=title, message=message)
 
-    def _is_modified(self, text):
+    def _is_modified(text):
         """Checks if text were modified.
         Args:
             text (tk.Text or None): Instance of the tkinter class Text;
@@ -277,7 +277,7 @@ class FileMenuMethods():
         modified = text.edit_modified()
         return modified
 
-    def _save_modified(self, text, parent):
+    def _save_modified(text, parent):
         """If contents of "text" were modified asks user whether
         or not changes should be saved. Saves changes if user answers
         positively.
@@ -297,16 +297,16 @@ class FileMenuMethods():
                 assumed that further execution of function from where
                 it was called will stop.
             """
-        if self._is_modified(text):
-            save_before_action = self._message_ask_save()
+        if FileMenuMethods._is_modified(text):
+            save_before_action = FileMenuMethods._message_ask_save()
             if save_before_action:
-                self.save(text, parent)
+                FileMenuMethods.save(text, parent)
         else:
             save_before_action = False
 
         return save_before_action
 
-    def _set_current_file(self, file, parent):
+    def _set_current_file(file, parent):
         """Sets attribute file of the parent's master to the value file.
         Args:
             file (str or None): Path to the file being loaded into the
@@ -319,74 +319,75 @@ class FileMenuMethods():
         parent.file = file
 
 
-class EditMenuMethods():
+class EditMenuMethods:
     """Container class for Edit menu methods"""
     # TODO:
     # Some Edit methods should be grayed out if no text is selected
     # or undo/redo stuck is empty
-    def undo(self, text):
+    def undo(text):
         text.edit_undo()
 
-    def redo(self, text):
+    def redo(text):
         text.edit_redo()
 
-    def cut(self, text):
-        self.copy(text)
-        self.delete(text)
+    def cut(text):
+        EditMenuMethods.copy(text)
+        EditMenuMethods.delete(text)
 
-    def copy(self, text):
+    def copy(text):
         # TODO:
         # When selected text is copied into the clipboard and then
         # the program window is closed the clipboard becomes empty.
-        if self._text_selected(text):
+        if EditMenuMethods._text_selected(text):
             text.clipboard_clear()
             text.clipboard_append(text.selection_get())
 
-    def paste(self, text):
+    def paste(text):
         try:
             clipboard_content = text.clipboard_get()
         except TclError:
             return
 
-        self.delete(text)
+        EditMenuMethods.delete(text)
         text.insert(INSERT, clipboard_content)
 
-    def delete(self, text):
-        if self._text_selected(text):
+    def delete(text):
+        if EditMenuMethods._text_selected(text):
             text.delete(SEL_FIRST, SEL_LAST)
 
-    def find(self):
+    def find():
         pass
 
-    def find_and_replace(self):
+    def find_and_replace():
         pass
 
-    def find_in_files(self):
+    def find_in_files():
         pass
 
-    def go_to(self):
+    def go_to():
         pass
 
-    def _text_selected(self, text):
+    def _text_selected(text):
         return text.tag_ranges(SEL)
 
 
-class FormatMenuMethods():
+class FormatMenuMethods:
     """Container class for Format menu methods"""
     pass
 
 
-class ViewMenuMethods():
+class ViewMenuMethods:
     """Container class for View menu methods"""
     pass
 
 
-class HelpMenuMethods():
+class HelpMenuMethods:
     """Container class for Help menu methods"""
     def show_help():
         pass
     def about():
         tkinter.messagebox.showinfo(title=PROGRAM_NAME, message=__doc__)
+
 
 class MenuMethods(FileMenuMethods, EditMenuMethods,
                   FormatMenuMethods, ViewMenuMethods, HelpMenuMethods):
@@ -401,34 +402,34 @@ class MenuContents():
         self.file_menu_content = ('File', [
             dict(label="New file", entry_type="command",
                  accelerator="Ctrl+N",
-                 command=lambda: MenuMethods().new_file(self.text, self.parent)),
+                 command=lambda: MenuMethods.new_file(self.text, self.parent)),
             dict(label= "Open...", entry_type="command",
                  accelerator="Ctrl+O",
-                 command=lambda: MenuMethods().open(self.text, self.parent)),
+                 command=lambda: MenuMethods.open(self.text, self.parent)),
             dict(label="Save", entry_type="command", accelerator="Ctrl+S",
-                 command=lambda: MenuMethods().save(self.text, self.parent)),
+                 command=lambda: MenuMethods.save(self.text, self.parent)),
             dict(label="Save as...", entry_type="command",
                  accelerator="Ctrl+Shift+S",
-                 command=lambda:MenuMethods().save_as(self.text, self.parent)),
+                 command=lambda:MenuMethods.save_as(self.text, self.parent)),
             SEPARATOR,
             dict(label="Exit", entry_type="command",
-                 command=lambda:MenuMethods().exit(self.text, self.parent))])
+                 command=lambda:MenuMethods.exit(self.text, self.parent))])
         self.menus.append(self.file_menu_content)
         # Edit menu
         self.edit_menu_content = ("Edit", [
             dict(label="Undo", entry_type="command", accelerator="Ctrl+Z",
-                 command=lambda: MenuMethods().undo(self.text)),
+                 command=lambda: MenuMethods.undo(self.text)),
             dict(label="Redo", entry_type="command", accelerator="Ctrl+Y",
-                 command=lambda: MenuMethods().redo(self.text)),
+                 command=lambda: MenuMethods.redo(self.text)),
             SEPARATOR,
             dict(label="Cut", entry_type="command", accelerator="Ctrl+X",
-                 command=lambda: MenuMethods().cut(self.text)),
+                 command=lambda: MenuMethods.cut(self.text)),
             dict(label="Copy", entry_type="command", accelerator="Ctrl+C",
-                 command=lambda: MenuMethods().copy(self.text)),
+                 command=lambda: MenuMethods.copy(self.text)),
             dict(label="Paste", entry_type="command", accelerator="Ctrl+V",
-                 command=lambda: MenuMethods().paste(self.text)),
+                 command=lambda: MenuMethods.paste(self.text)),
             dict(label="Delete", entry_type="command", accelerator="Del",
-                 command=lambda: MenuMethods().delete(self.text)),
+                 command=lambda: MenuMethods.delete(self.text)),
             SEPARATOR,
             dict(label="Find...", entry_type="command", accelerator="Ctrl+F"),
             dict(label="Find and replace...", entry_type="command",
@@ -451,9 +452,9 @@ class MenuContents():
     # Help menu
         self.help_menu_content = ("Help", [
             dict(label="Show help...", entry_type="command",
-                 command=MenuMethods().show_help),
+                 command=MenuMethods.show_help),
             dict(label="About", entry_type="command",
-                 command=MenuMethods().about)])
+                 command=MenuMethods.about)])
         self.menus.append(self.help_menu_content)
 
         # Lists of commands that should be disabled in
@@ -487,7 +488,6 @@ class Menubar(tk.Frame, MenuContents):
 
     def _get_text(self):
         self.text = self.parent.text
-
 
 
 class TextSpace(tk.Frame):
@@ -630,6 +630,14 @@ class Statusbar(tk.Frame):
         cursor_pos = self.get_cursor_pos()
         cursor_pos_text = "line {} col {}".format(*cursor_pos)
         self.cursor_position.config(text=cursor_pos_text)
+
+
+class ContextMenu(tk.Menu):
+    def __init__(self, parent=None):
+        tk.Menu.__init__(self, parent)
+        self.make_context_menu()
+
+        self.context_menu_content = []
 
 
 if __name__ == '__main__':

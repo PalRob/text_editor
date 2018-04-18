@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter.constants import * # pylint: disable=unused-wildcard-import
 
 
-def make_menu(parent, menu_content, **options):
+def make_menu(parent, menu_content):
     """Creates an instance of tkinter Menu class with given content.
     Args:
         parent (Class): parent class that menu widget attached to;
@@ -30,8 +30,7 @@ def make_menu(parent, menu_content, **options):
     """
     # Originally "tearoff" defaults to True.
     # Lines below set it to False by default.
-    if "tearoff" not in options:
-        options["tearoff"] = NO
+    options = dict(tearoff=NO)
 
     menu = tk.Menu(parent, **options)
 
@@ -39,7 +38,8 @@ def make_menu(parent, menu_content, **options):
                 "separator": menu.add_separator,
                 "cascade": menu.add_cascade,
                 "checkbutton": menu.add_checkbutton,
-                "radiobutton": menu.add_radiobutton}
+                "radiobutton": menu.add_radiobutton,
+                "options": menu.config}
 
     # Special cases for "separator" and "cascade".
     for menu_entry in menu_content:
@@ -53,6 +53,15 @@ def make_menu(parent, menu_content, **options):
 
         if entry_type == "cascade":
             entry["menu"] = make_menu(menu, entry["menu"])
+
+        if entry_type == "options":
+            # dummy_options - placeholder in caise the enty options
+            # passed two or more times for some reason
+            dummy_options = options
+            # Clashing keys in options overwrited by respective
+            # keys in entry
+            dummy_options.update(entry)
+            entry = options
 
         commands[entry_type](**entry)
 
@@ -103,7 +112,8 @@ if __name__ == '__main__':
                 dict(entry_type='radiobutton',
                     label="10", variable=var_3, value=10),
                 dict(entry_type='radiobutton',
-                    label="100", variable=var_3, value=100)]),
+                    label="100", variable=var_3, value=100),
+                dict(entry_type="options", bg='red')]),
             dict(entry_type="command", label="Print radio",
                 command=lambda:print(var_3.get()))])
 
